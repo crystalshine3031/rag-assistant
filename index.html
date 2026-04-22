@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeuralDoc — AI Knowledge Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #05050a;
+  --bg2: #0c0c15;
+  --bg3: #111120;
+  --card: #13131f;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #7c5cfc;
+  --accent2: #00d4ff;
+  --accent3: #ff6b9d;
+  --green: #00ffaa;
+  --text: #eeeeff;
+  --text2: #8888aa;
+  --text3: #44445a;
+  --user-bubble: linear-gradient(135deg,#4f35d4,#7c5cfc);
+  --ai-bubble: #13131f;
+  --radius: 16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;overflow:hidden}
+
+/* Background */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 800px 600px at 10% 20%,rgba(124,92,252,0.07) 0%,transparent 60%),
+    radial-gradient(ellipse 600px 400px at 90% 80%,rgba(0,212,255,0.05) 0%,transparent 60%),
+    linear-gradient(rgba(124,92,252,0.025) 1px,transparent 1px) 0 0/70px 70px,
+    linear-gradient(90deg,rgba(124,92,252,0.025) 1px,transparent 1px) 0 0/70px 70px;
+  pointer-events:none;z-index:0;
+}
+
+/* Layout */
+.layout{display:flex;height:100vh;position:relative;z-index:1}
+
+/* Sidebar */
+.sidebar{
+  width:280px;min-width:280px;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:24px 18px;
+  gap:0;
+  overflow-y:auto;
+}
+.logo{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:28px;
+  padding-bottom:22px;
+  border-bottom:1px solid var(--border);
+}
+.logo-icon{
+  width:40px;height:40px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;
+  box-shadow:0 0 20px rgba(124,92,252,0.4);
+  flex-shrink:0;
+}
+.logo-name{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:-0.02em}
+.logo-name span{
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.logo-sub{font-size:0.68rem;color:var(--text3);margin-top:1px;font-family:'JetBrains Mono',monospace}
+
+/* Status badge */
+.status-badge{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,255,170,0.06);
+  border:1px solid rgba(0,255,170,0.15);
+  border-radius:30px;padding:8px 14px;
+  margin-bottom:20px;font-size:0.78rem;color:var(--green);
+}
+.status-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+
+/* Sidebar label */
+.sb-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.14em;
+  margin-bottom:10px;margin-top:20px;
+}
+
+/* Stat grid */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+  transition:border-color .2s,transform .2s;cursor:default;
+}
+.stat-card:hover{border-color:rgba(124,92,252,.4);transform:translateY(-1px)}
+.stat-val{
+  font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  line-height:1;margin-bottom:3px;
+}
+.stat-key{font-size:0.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+
+/* Tech stack chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.68rem;padding:4px 10px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  border-radius:20px;color:var(--text2);
+  transition:all .2s;cursor:default;
+}
+.chip:hover{background:rgba(124,92,252,.12);border-color:rgba(124,92,252,.4);color:var(--accent)}
+
+/* Quick questions */
+.quick-q{
+  display:flex;flex-direction:column;gap:6px;
+}
+.q-btn{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:9px 12px;
+  font-size:0.78rem;color:var(--text2);
+  cursor:pointer;text-align:left;
+  transition:all .2s;font-family:'Outfit',sans-serif;
+  line-height:1.4;
+}
+.q-btn:hover{background:rgba(124,92,252,.1);border-color:rgba(124,92,252,.4);color:var(--text)}
+
+/* Main chat area */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* Topbar */
+.topbar{
+  padding:18px 28px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(5,5,10,.8);
+  backdrop-filter:blur(20px);
+  flex-shrink:0;
+}
+.topbar-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;color:var(--text)}
+.topbar-meta{font-size:0.72rem;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.topbar-actions{display:flex;gap:8px}
+.icon-btn{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--bg3);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;color:var(--text2);font-size:14px;
+}
+.icon-btn:hover{background:rgba(124,92,252,.15);border-color:rgba(124,92,252,.4);color:var(--accent)}
+
+/* Chat messages */
+.chat-area{
+  flex:1;overflow-y:auto;
+  padding:28px;
+  display:flex;flex-direction:column;gap:24px;
+  scroll-behavior:smooth;
+}
+.chat-area::-webkit-scrollbar{width:4px}
+.chat-area::-webkit-scrollbar-track{background:transparent}
+.chat-area::-webkit-scrollbar-thumb{background:rgba(124,92,252,.3);border-radius:2px}
+
+/* Message row */
+.msg-row{display:flex;gap:14px;animation:fadeUp .35s ease forwards;opacity:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.msg-row.user{flex-direction:row-reverse}
+
+/* Avatars */
+.avatar{
+  width:36px;height:36px;border-radius:10px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;
+}
+.avatar.ai{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 0 16px rgba(124,92,252,.35);
+  font-family:'Syne',sans-serif;
+}
+.avatar.user{
+  background:linear-gradient(135deg,#2a2a3d,#3a3a55);
+  border:1px solid var(--border2);color:var(--text2);
+}
+
+/* Message content */
+.msg-content{max-width:680px;display:flex;flex-direction:column;gap:8px}
+.msg-row.user .msg-content{align-items:flex-end}
+
+.msg-name{font-size:0.7rem;color:var(--text3);font-family:'JetBrains Mono',monospace;padding:0 4px}
+
+.bubble{
+  padding:14px 18px;
+  border-radius:18px;
+  font-size:0.92rem;line-height:1.75;
+  white-space:pre-wrap;word-break:break-word;
+}
+.bubble.ai{
+  background:var(--ai-bubble);
+  border:1px solid var(--border);
+  border-radius:4px 18px 18px 18px;
+  color:var(--text);
+}
+.bubble.user{
+  background:var(--user-bubble);
+  border-radius:18px 4px 18px 18px;
+  color:#fff;
+  box-shadow:0 4px 20px rgba(124,92,252,.25);
+}
+
+/* Source chips */
+.sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.src-chip{
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.68rem;
+  padding:3px 10px;
+  background:rgba(124,92,252,.1);
+  border:1px solid rgba(124,92,252,.25);
+  border-radius:20px;color:var(--accent);
+  cursor:default;transition:all .2s;
+}
+.src-chip:hover{background:rgba(124,92,252,.2)}
+
+/* Typing indicator */
+.typing-bubble{
+  background:var(--ai-bubble);
+  border:1px solid var(--border);
+  border-radius:4px 18px 18px 18px;
+  padding:14px 20px;
+  display:flex;gap:6px;align-items:center;
+}
+.typing-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--accent);opacity:.5;
+  animation:typing 1.4s infinite;
+}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+
+/* Welcome screen */
+.welcome{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:20px;padding:40px;text-align:center;
+}
+.welcome-icon{
+  width:72px;height:72px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:20px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:#fff;
+  box-shadow:0 0 40px rgba(124,92,252,.4);
+  margin-bottom:8px;
+}
+.welcome h2{
+  font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;
+  background:linear-gradient(90deg,var(--text),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.welcome p{color:var(--text2);font-size:0.95rem;max-width:440px;line-height:1.7}
+.welcome-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.welcome-chip{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:30px;padding:8px 16px;
+  font-size:0.82rem;color:var(--text2);cursor:pointer;
+  transition:all .2s;
+}
+.welcome-chip:hover{background:rgba(124,92,252,.1);border-color:rgba(124,92,252,.4);color:var(--accent)}
+
+/* Input area */
+.input-area{
+  padding:20px 28px 24px;
+  border-top:1px solid var(--border);
+  background:rgba(5,5,10,.9);
+  backdrop-filter:blur(20px);
+  flex-shrink:0;
+}
+.input-wrap{
+  display:flex;align-items:flex-end;gap:12px;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:12px 14px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.input-wrap:focus-within{
+  border-color:rgba(124,92,252,.5);
+  box-shadow:0 0 0 3px rgba(124,92,252,.08),0 0 20px rgba(124,92,252,.1);
+}
+#chat-input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:'Outfit',sans-serif;
+  font-size:0.95rem;resize:none;min-height:24px;max-height:160px;
+  line-height:1.6;
+}
+#chat-input::placeholder{color:var(--text3)}
+.send-btn{
+  width:40px;height:40px;border-radius:11px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+  box-shadow:0 4px 15px rgba(124,92,252,.3);
+}
+.send-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,92,252,.45)}
+.send-btn:active{transform:scale(.95)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.send-btn svg{fill:white;width:18px;height:18px}
+.input-hint{
+  font-size:0.68rem;color:var(--text3);
+  margin-top:8px;padding:0 4px;
+  font-family:'JetBrains Mono',monospace;
+  display:flex;justify-content:space-between;
+}
+
+/* Error toast */
+.toast{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  background:#2a0a0a;border:1px solid rgba(255,80,80,.3);
+  color:#ff8080;border-radius:12px;padding:12px 20px;
+  font-size:0.82rem;z-index:100;display:none;
+  animation:fadeUp .3s ease;max-width:500px;text-align:center;
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">N</div>
+      <div>
+        <div class="logo-name"><span>NeuralDoc</span></div>
+        <div class="logo-sub">v1.0 · RAG Assistant</div>
+      </div>
+    </div>
+
+    <div class="status-badge" id="status-badge">
+      <div class="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+
+    <div class="sb-label">Knowledge Base</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-val">177</div><div class="stat-key">Chunks</div></div>
+      <div class="stat-card"><div class="stat-val">171</div><div class="stat-key">Pages</div></div>
+      <div class="stat-card"><div class="stat-val">ML</div><div class="stat-key">Domain</div></div>
+      <div class="stat-card"><div class="stat-val" id="q-count">0</div><div class="stat-key">Asked</div></div>
+    </div>
+
+    <div class="sb-label">Tech Stack</div>
+    <div class="chips">
+      <span class="chip">Groq LLaMA 3.1</span>
+      <span class="chip">ChromaDB</span>
+      <span class="chip">HuggingFace</span>
+      <span class="chip">FastAPI</span>
+      <span class="chip">LangChain</span>
+      <span class="chip">Python 3.11</span>
+    </div>
+
+    <div class="sb-label">Try These</div>
+    <div class="quick-q">
+      <button class="q-btn" onclick="quickAsk('What is machine learning?')">What is machine learning?</button>
+      <button class="q-btn" onclick="quickAsk('Explain supervised vs unsupervised learning')">Supervised vs unsupervised?</button>
+      <button class="q-btn" onclick="quickAsk('What are neural networks?')">What are neural networks?</button>
+      <button class="q-btn" onclick="quickAsk('How does gradient descent work?')">How does gradient descent work?</button>
+      <button class="q-btn" onclick="quickAsk('What is overfitting and how to prevent it?')">What is overfitting?</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">ML Knowledge Assistant</div>
+        <div class="topbar-meta" id="topbar-meta">RAG · Groq LLaMA 3.1 · ChromaDB</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="icon-btn" title="Clear chat" onclick="clearChat()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="chat-area" id="chat-area">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">N</div>
+        <h2>Ask me anything</h2>
+        <p>I have read your entire ML textbook — 171 pages, 177 knowledge chunks. Ask me anything and I will explain it clearly with examples.</p>
+        <div class="welcome-chips">
+          <span class="welcome-chip" onclick="quickAsk('What is machine learning?')">What is machine learning?</span>
+          <span class="welcome-chip" onclick="quickAsk('Explain deep learning')">Explain deep learning</span>
+          <span class="welcome-chip" onclick="quickAsk('Types of machine learning algorithms')">Types of ML algorithms</span>
+          <span class="welcome-chip" onclick="quickAsk('What is a decision tree?')">What is a decision tree?</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="chat-input" rows="1" placeholder="Ask anything about machine learning..." oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z" fill="white"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">
+        <span>⏎ Enter to send · Shift+⏎ new line</span>
+        <span id="latency-display"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let questionCount = 0;
+let isLoading = false;
+
+// Check API health on load
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    if (r.ok) {
+      document.getElementById('status-text').textContent = 'API Connected';
+      document.getElementById('status-badge').style.background = 'rgba(0,255,170,0.06)';
+    }
+  } catch(e) {
+    document.getElementById('status-text').textContent = 'API Offline';
+    document.getElementById('status-badge').style.background = 'rgba(255,80,80,0.06)';
+    document.getElementById('status-badge').style.borderColor = 'rgba(255,80,80,0.2)';
+    document.querySelector('.status-dot').style.background = '#ff5050';
+    document.querySelector('.status-dot').style.boxShadow = '0 0 8px #ff5050';
+    document.getElementById('status-text').style.color = '#ff8080';
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function quickAsk(q) {
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+function clearChat() {
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  const welcome = document.createElement('div');
+  welcome.id = 'welcome';
+  welcome.className = 'welcome';
+  welcome.innerHTML = `
+    <div class="welcome-icon">N</div>
+    <h2>Ask me anything</h2>
+    <p>I have read your entire ML textbook. Ask me anything!</p>
+  `;
+  area.appendChild(welcome);
+  questionCount = 0;
+  document.getElementById('q-count').textContent = '0';
+  document.getElementById('latency-display').textContent = '';
+}
+
+function addUserMessage(text) {
+  hideWelcome();
+  const area = document.getElementById('chat-area');
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `
+    <div class="avatar user">U</div>
+    <div class="msg-content">
+      <div class="msg-name">You</div>
+      <div class="bubble user">${escapeHtml(text)}</div>
+    </div>
+  `;
+  area.appendChild(row);
+  scrollBottom();
+}
+
+function addTypingIndicator() {
+  const area = document.getElementById('chat-area');
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.id = 'typing-row';
+  row.innerHTML = `
+    <div class="avatar ai">N</div>
+    <div class="msg-content">
+      <div class="msg-name">NeuralDoc AI</div>
+      <div class="typing-bubble">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  `;
+  area.appendChild(row);
+  scrollBottom();
+}
+
+function removeTypingIndicator() {
+  const t = document.getElementById('typing-row');
+  if (t) t.remove();
+}
+
+function addAIMessage(text, sources, latencyMs) {
+  const area = document.getElementById('chat-area');
+  const sourcesHtml = sources && sources.length
+    ? `<div class="sources">${sources.map(s => `<span class="src-chip">📄 Page ${s.page}</span>`).join('')}</div>`
+    : '';
+
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.innerHTML = `
+    <div class="avatar ai">N</div>
+    <div class="msg-content">
+      <div class="msg-name">NeuralDoc AI${latencyMs ? ` · <span style="color:var(--text3);font-size:.6rem">${latencyMs}ms</span>` : ''}</div>
+      <div class="bubble ai">${escapeHtml(text)}</div>
+      ${sourcesHtml}
+    </div>
+  `;
+  area.appendChild(row);
+  scrollBottom();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function hideWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+
+function scrollBottom() {
+  const area = document.getElementById('chat-area');
+  setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  isLoading = true;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+
+  addUserMessage(question);
+  addTypingIndicator();
+
+  const t0 = Date.now();
+
+  try {
+    const res = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question})
+    });
+
+    const latency = Date.now() - t0;
+    removeTypingIndicator();
+
+    if (res.ok) {
+      const data = await res.json();
+      addAIMessage(data.answer, data.sources, latency);
+      questionCount++;
+      document.getElementById('q-count').textContent = questionCount;
+      document.getElementById('latency-display').textContent = `⚡ ${latency}ms`;
+      document.getElementById('topbar-meta').textContent = `RAG · Groq LLaMA 3.1 · Last: ${latency}ms`;
+    } else {
+      const err = await res.json();
+      addAIMessage('Sorry, something went wrong: ' + (err.detail || 'Unknown error'), [], 0);
+    }
+  } catch(e) {
+    removeTypingIndicator();
+    if (e.message.includes('fetch')) {
+      showToast('Cannot connect to API. Make sure uvicorn is running on port 8000.');
+      addAIMessage('I cannot connect to the backend API. Please make sure your FastAPI server is running:\n\nuvicorn src.api.main:app --port 8000', [], 0);
+    } else {
+      addAIMessage('Error: ' + e.message, [], 0);
+    }
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('chat-input').focus();
+}
+
+checkHealth();
+document.getElementById('chat-input').focus();
+</script>
+</body>
+</html>
