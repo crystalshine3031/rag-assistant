@@ -1,2 +1,5 @@
 [phases.install]
-cmds = ["pip install -r requirements-prod.txt"]
+cmds = [
+  "pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu",
+  "pip install -r requirements-prod.txt"
+]
