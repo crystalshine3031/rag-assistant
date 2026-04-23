@@ -11,4 +11,3 @@ python-dotenv==1.0.1
 pydantic==2.13.0
 huggingface-hub==0.24.0
 sentence-transformers==3.0.0
-torch==2.2.0+cpu
