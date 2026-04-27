@@ -14,65 +14,45 @@ load_dotenv()
 
 from src.retrieval.rag_chain import load_vectorstore, build_rag_chain
 
-app = FastAPI(
-    title="RAG Knowledge Assistant",
-    description="Ask questions about your documents",
-    version="1.0.0"
-)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-print("Loading RAG chain...")
-vectorstore = load_vectorstore()
-chain, retriever = build_rag_chain(vectorstore)
-print("RAG chain ready!")
+# Load ONCE at startup — not on every request
+vectorstore = None
+rag_chain = None
+retriever = None
 
-class QuestionRequest(BaseModel):
+@app.on_event("startup")
+async def startup_event():
+    global vectorstore, rag_chain, retriever
+    print("Loading vectorstore and RAG chain...")
+    vectorstore = load_vectorstore()
+    rag_chain, retriever = build_rag_chain(vectorstore)
+    print("Ready!")
+
+class Question(BaseModel):
     question: str
-
-class SourceModel(BaseModel):
-    page: int
-    preview: str
-
-class AnswerResponse(BaseModel):
-    question: str
-    answer: str
-    sources: list[SourceModel]
-
-@app.get("/")
-def root():
-    return {
-        "message": "RAG Assistant is running!",
-        "usage": "POST /ask with {question: 'your question'}"
-    }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "model": "llama-3.1-8b-instant"}
+    return {"status": "ok"}
 
-@app.post("/ask", response_model=AnswerResponse)
-def ask_question(request: QuestionRequest):
-    if not request.question.strip():
-        raise HTTPException(status_code=400, detail="Question cannot be empty")
+@app.post("/ask")
+async def ask(q: Question):
+    if rag_chain is None:
+        raise HTTPException(status_code=503, detail="Model still loading, try again in a moment")
     try:
-        answer = chain.invoke(request.question)
-        sources = retriever.invoke(request.question)
-        source_list = [
-            SourceModel(
-                page=int(doc.metadata.get("page", 0)) + 1,
-                preview=doc.page_content[:150].replace("\n", " ")
-            )
-            for doc in sources
-        ]
-        return AnswerResponse(
-            question=request.question,
-            answer=answer,
-            sources=source_list
-        )
+        sources = retriever.invoke(q.question)
+        answer = rag_chain.invoke(q.question)
+        return {
+            "answer": answer,
+            "sources": [{"page": doc.metadata.get("page", 0)} for doc in sources]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
